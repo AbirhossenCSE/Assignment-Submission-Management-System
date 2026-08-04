@@ -1,9 +1,14 @@
+using System.Text;
 using AssignmentManagementSystem.API.Configurations;
+using AssignmentManagementSystem.API.Helpers.Implementations;
+using AssignmentManagementSystem.API.Helpers.Interfaces;
 using AssignmentManagementSystem.API.Middlewares;
 using AssignmentManagementSystem.API.Repositories.Implementations;
 using AssignmentManagementSystem.API.Repositories.Interfaces;
 using AssignmentManagementSystem.API.Services.Implementations;
 using AssignmentManagementSystem.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
 using Serilog;
@@ -56,14 +61,52 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
     return mongoClient.GetDatabase(mongoSettings.DatabaseName);
 });
 
-// 4. Repositories & Services Registration
+// 4. JWT Authentication & Authorization Configuration
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+ArgumentNullException.ThrowIfNull(jwtSettings, nameof(jwtSettings));
+if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
+{
+    throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+}
+
+var key = Encoding.UTF8.GetBytes(jwtSettings.SecretKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwtSettings.Audience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// 5. Repositories, Helpers & Services Registration
 builder.Services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHealthService, HealthService>();
 
-// 5. Add Controllers
+// 6. Add Controllers
 builder.Services.AddControllers();
 
-// 6. CORS Configuration for Next.js Client
+// 7. CORS Configuration for Next.js Client
 const string corsPolicyName = "AllowNextJsClient";
 builder.Services.AddCors(options =>
 {
@@ -75,7 +118,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 7. Swagger / OpenAPI Configuration with JWT Bearer
+// 8. Swagger / OpenAPI Configuration with JWT Bearer
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -86,7 +129,6 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Role-based API for Admin, Teacher, and Student operations."
     });
 
-    // JWT Security Definition for future auth integration
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -115,7 +157,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 8. Middleware Pipeline
+// 9. Middleware Pipeline
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseSerilogRequestLogging();
@@ -132,6 +174,7 @@ if (app.Environment.IsDevelopment() || true)
 
 app.UseCors(corsPolicyName);
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

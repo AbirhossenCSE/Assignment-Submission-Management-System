@@ -31,12 +31,24 @@ public class GlobalExceptionMiddleware
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+
+        var statusCode = exception switch
+        {
+            UnauthorizedAccessException => HttpStatusCode.Unauthorized,
+            InvalidOperationException => HttpStatusCode.BadRequest,
+            ArgumentException => HttpStatusCode.BadRequest,
+            KeyNotFoundException => HttpStatusCode.NotFound,
+            _ => HttpStatusCode.InternalServerError
+        };
+
+        context.Response.StatusCode = (int)statusCode;
 
         var errors = new List<string> { exception.Message };
 
         var response = ApiResponse<object>.FailureResponse(
-            "An internal server error occurred.",
+            statusCode == HttpStatusCode.InternalServerError
+                ? "An internal server error occurred."
+                : exception.Message,
             errors
         );
 

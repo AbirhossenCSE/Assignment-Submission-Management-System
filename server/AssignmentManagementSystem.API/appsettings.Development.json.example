@@ -10,7 +10,7 @@
     "DatabaseName": "AssignmentManagementDb"
   },
   "JwtSettings": {
-    "Secret": "REPLACE_WITH_YOUR_STRONG_SECRET_KEY_AT_LEAST_32_CHARS",
+    "SecretKey": "REPLACE_WITH_YOUR_STRONG_SECRET_KEY_AT_LEAST_32_CHARS",
     "Issuer": "AssignmentManagementApi",
     "Audience": "AssignmentManagementClient",
     "ExpiryInMinutes": 60
