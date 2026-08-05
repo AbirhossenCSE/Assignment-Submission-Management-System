@@ -5,15 +5,32 @@ namespace AssignmentManagementSystem.API.Models;
 
 public class Submission : BaseEntity
 {
+    [BsonRequired]
     public string AssignmentId { get; set; } = string.Empty;
+
+    [BsonRequired]
     public string StudentId { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
-    public List<string> AttachmentUrls { get; set; } = new();
-    
+
+    [BsonRequired]
+    public string AnswerText { get; set; } = string.Empty;
+
+    public string? AttachmentUrl { get; set; }
+
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-    public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? SubmittedAt { get; set; }
 
     public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
-    public double? Grade { get; set; }
-    public string Feedback { get; set; } = string.Empty;
+
+    public int? Marks { get; set; }
+
+    public string? Feedback { get; set; }
+
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public DateTime? GradedAt { get; set; }
+
+    public string? GradedBy { get; set; }
+
+    public bool IsLate { get; set; } = false;
+
+    public bool IsDeleted { get; set; } = false;
 }
