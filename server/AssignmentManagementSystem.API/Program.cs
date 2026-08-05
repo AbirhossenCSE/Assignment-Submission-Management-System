@@ -37,7 +37,10 @@ builder.Services.Configure<MongoDbSettings>(
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
-// 3. MongoDB Client & Database DI Registration
+// 3. HttpContextAccessor Registration
+builder.Services.AddHttpContextAccessor();
+
+// 4. MongoDB Client & Database DI Registration
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var mongoSettings = builder.Configuration.GetSection("MongoDbSettings").Get<MongoDbSettings>();
@@ -61,7 +64,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
     return mongoClient.GetDatabase(mongoSettings.DatabaseName);
 });
 
-// 4. JWT Authentication & Authorization Configuration
+// 5. JWT Authentication & Authorization Configuration
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 ArgumentNullException.ThrowIfNull(jwtSettings, nameof(jwtSettings));
 if (string.IsNullOrWhiteSpace(jwtSettings.SecretKey))
@@ -95,24 +98,27 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 5. Repositories, Helpers & Services Registration
+// 6. Repositories, Helpers & Services Registration
 builder.Services.AddScoped(typeof(IMongoRepository<>), typeof(MongoRepository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<IHealthService, HealthService>();
 
-// 6. Add Controllers
+// 7. Add Controllers
 builder.Services.AddControllers();
 
-// 7. CORS Configuration for Next.js Client
+// 8. CORS Configuration for Next.js Client
 const string corsPolicyName = "AllowNextJsClient";
 builder.Services.AddCors(options =>
 {
@@ -124,7 +130,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 8. Swagger / OpenAPI Configuration with JWT Bearer
+// 9. Swagger / OpenAPI Configuration with JWT Bearer
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -163,7 +169,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 9. Middleware Pipeline
+// 10. Middleware Pipeline
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseSerilogRequestLogging();

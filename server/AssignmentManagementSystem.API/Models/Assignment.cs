@@ -5,16 +5,29 @@ namespace AssignmentManagementSystem.API.Models;
 
 public class Assignment : BaseEntity
 {
+    [BsonRequired]
     public string Title { get; set; } = string.Empty;
+
+    [BsonRequired]
     public string Description { get; set; } = string.Empty;
+
+    [BsonRequired]
     public string ClassId { get; set; } = string.Empty;
+
+    [BsonRequired]
     public string SubjectId { get; set; } = string.Empty;
-    public string CreatedByTeacherId { get; set; } = string.Empty;
-    
+
+    [BsonRequired]
+    public string TeacherId { get; set; } = string.Empty;
+
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-    public DateTime DueDate { get; set; }
-    
-    public int MaxScore { get; set; } = 100;
+    public DateTime Deadline { get; set; }
+
+    public int MaxMarks { get; set; } = 100;
+
     public AssignmentStatus Status { get; set; } = AssignmentStatus.Draft;
-    public List<string> AttachmentUrls { get; set; } = new();
+
+    public bool AllowResubmission { get; set; } = true;
+
+    public bool IsDeleted { get; set; } = false;
 }
