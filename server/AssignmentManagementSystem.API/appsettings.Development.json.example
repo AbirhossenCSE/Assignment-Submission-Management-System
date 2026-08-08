@@ -9,7 +9,7 @@
     }
   },
   "MongoDbSettings": {
-    "ConnectionString": "mongodb://localhost:27017",
+    "ConnectionString": "mongodb+srv://Assignment:T9Ijf28QkZU3cG5a@cluster0.wpavw.mongodb.net/?appName=Cluster0",
     "DatabaseName": "AssignmentManagementDb"
   },
   "JwtSettings": {
