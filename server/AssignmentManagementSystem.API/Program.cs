@@ -6,6 +6,7 @@ using AssignmentManagementSystem.API.Helpers.Interfaces;
 using AssignmentManagementSystem.API.Middlewares;
 using AssignmentManagementSystem.API.Repositories.Implementations;
 using AssignmentManagementSystem.API.Repositories.Interfaces;
+using AssignmentManagementSystem.API.Seed;
 using AssignmentManagementSystem.API.Services.Implementations;
 using AssignmentManagementSystem.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -191,7 +192,22 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 10. Middleware Pipeline Order: Global Exception Handling -> Serilog -> Swagger -> CORS -> Auth -> Controllers
+// 10. Database Seeding Execution
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var database = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        await DataSeeder.SeedAsync(database, passwordHasher);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Failed to execute database seeding during startup.");
+    }
+}
+
+// 11. Middleware Pipeline Order: Global Exception Handling -> Serilog -> Swagger -> CORS -> Auth -> Controllers
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseSerilogRequestLogging();
