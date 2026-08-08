@@ -16,6 +16,7 @@ namespace AssignmentManagementSystem.Tests.Services;
 public class AuthServiceTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IClassRepository> _classRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
     private readonly Mock<ILogger<AuthService>> _loggerMock;
@@ -24,12 +25,14 @@ public class AuthServiceTests
     public AuthServiceTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _classRepositoryMock = new Mock<IClassRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
         _loggerMock = new Mock<ILogger<AuthService>>();
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
+            _classRepositoryMock.Object,
             _passwordHasherMock.Object,
             _jwtTokenGeneratorMock.Object,
             _loggerMock.Object);
@@ -58,6 +61,35 @@ public class AuthServiceTests
         // Assert
         await action.Should().ThrowAsync<ConflictException>()
             .WithMessage($"Email '{request.Email}' is already registered.");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WhenStudentProvidesNonExistentClassId_ThrowsNotFoundException()
+    {
+        // Arrange
+        var request = new RegisterRequestDto
+        {
+            FullName = "Student User",
+            Email = "newstudent@school.com",
+            Password = "Password123!",
+            Role = Role.Student,
+            ClassId = "invalid-class-id"
+        };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        _classRepositoryMock
+            .Setup(r => r.GetByIdAsync(request.ClassId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ClassEntity?)null);
+
+        // Act
+        Func<Task> action = async () => await _authService.RegisterAsync(request);
+
+        // Assert
+        await action.Should().ThrowAsync<NotFoundException>()
+            .WithMessage($"Class with ID '{request.ClassId}' was not found.");
     }
 
     [Fact]

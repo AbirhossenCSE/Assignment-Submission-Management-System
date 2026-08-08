@@ -22,4 +22,6 @@ public class RegisterRequestDto
     [Required(ErrorMessage = "Role is required.")]
     [EnumDataType(typeof(Role), ErrorMessage = "Invalid role specified.")]
     public Role Role { get; set; }
+
+    public string? ClassId { get; set; }
 }

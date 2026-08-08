@@ -38,7 +38,30 @@ public static class DataSeeder
 
             var now = DateTime.UtcNow;
 
-            // 1. Create Demo Users
+            // 1. Create Demo Classes
+            var classA = new ClassEntity
+            {
+                Id = "66a000000000000000000010",
+                Name = "Class 10 - Section A",
+                Section = "A",
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var classB = new ClassEntity
+            {
+                Id = "66a000000000000000000011",
+                Name = "Class 10 - Section B",
+                Section = "B",
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await classesCollection.InsertManyAsync(new[] { classA, classB });
+
+            // 2. Create Demo Users
             var adminUser = new User
             {
                 Id = "66a000000000000000000001",
@@ -82,6 +105,7 @@ public static class DataSeeder
                 Email = "student1@school.com",
                 PasswordHash = passwordHasher.HashPassword("Student@123"),
                 Role = Role.Student,
+                ClassId = classA.Id,
                 IsActive = true,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -94,6 +118,7 @@ public static class DataSeeder
                 Email = "student2@school.com",
                 PasswordHash = passwordHasher.HashPassword("Student@123"),
                 Role = Role.Student,
+                ClassId = classA.Id,
                 IsActive = true,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -106,6 +131,7 @@ public static class DataSeeder
                 Email = "student3@school.com",
                 PasswordHash = passwordHasher.HashPassword("Student@123"),
                 Role = Role.Student,
+                ClassId = classB.Id,
                 IsActive = true,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -113,29 +139,6 @@ public static class DataSeeder
 
             var users = new[] { adminUser, teacher1, teacher2, student1, student2, student3 };
             await usersCollection.InsertManyAsync(users);
-
-            // 2. Create Demo Classes
-            var classA = new ClassEntity
-            {
-                Id = "66a000000000000000000010",
-                Name = "Class 10 - Section A",
-                Section = "A",
-                IsActive = true,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            var classB = new ClassEntity
-            {
-                Id = "66a000000000000000000011",
-                Name = "Class 10 - Section B",
-                Section = "B",
-                IsActive = true,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            await classesCollection.InsertManyAsync(new[] { classA, classB });
 
             // 3. Create Demo Subjects
             var mathSubject = new Subject
@@ -326,9 +329,9 @@ public static class DataSeeder
             Log.Information("   Admin:     admin@school.com    / Admin@123");
             Log.Information("   Teacher 1: teacher1@school.com / Teacher@123 (Sarah Connor)");
             Log.Information("   Teacher 2: teacher2@school.com / Teacher@123 (Walter White)");
-            Log.Information("   Student 1: student1@school.com / Student@123 (Alex Mercer)");
-            Log.Information("   Student 2: student2@school.com / Student@123 (Emma Watson)");
-            Log.Information("   Student 3: student3@school.com / Student@123 (Peter Parker)");
+            Log.Information("   Student 1: student1@school.com / Student@123 (Alex Mercer - Class A)");
+            Log.Information("   Student 2: student2@school.com / Student@123 (Emma Watson - Class A)");
+            Log.Information("   Student 3: student3@school.com / Student@123 (Peter Parker - Class B)");
             Log.Information("==========================================================");
         }
         catch (OperationCanceledException)

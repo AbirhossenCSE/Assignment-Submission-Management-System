@@ -49,13 +49,15 @@ public class AuthController : ControllerBase
         var email = User.FindFirstValue(ClaimTypes.Email);
         var fullName = User.FindFirstValue(ClaimTypes.Name);
         var role = User.FindFirstValue(ClaimTypes.Role);
+        var classId = User.FindFirstValue("classId");
 
         var userInfo = new
         {
             UserId = userId,
             Email = email,
             FullName = fullName,
-            Role = role
+            Role = role,
+            ClassId = classId
         };
 
         return Ok(ApiResponse<object>.SuccessResponse(userInfo, "User claims retrieved successfully."));

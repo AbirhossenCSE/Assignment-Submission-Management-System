@@ -7,26 +7,35 @@ public static class ClaimsPrincipalExtensions
 {
     public static string GetUserId(this ClaimsPrincipal user)
     {
-        return user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier) ?? user.FindFirst("sub");
+        return idClaim?.Value ?? string.Empty;
     }
 
     public static string GetUserEmail(this ClaimsPrincipal user)
     {
-        return user.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+        var emailClaim = user.FindFirst(ClaimTypes.Email);
+        return emailClaim?.Value ?? string.Empty;
     }
 
     public static string GetUserName(this ClaimsPrincipal user)
     {
-        return user.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
+        var nameClaim = user.FindFirst(ClaimTypes.Name);
+        return nameClaim?.Value ?? string.Empty;
     }
 
     public static Role? GetUserRole(this ClaimsPrincipal user)
     {
-        var roleString = user.FindFirstValue(ClaimTypes.Role);
-        if (Enum.TryParse<Role>(roleString, out var role))
+        var roleClaim = user.FindFirst(ClaimTypes.Role);
+        if (roleClaim != null && Enum.TryParse<Role>(roleClaim.Value, out var role))
         {
             return role;
         }
         return null;
+    }
+
+    public static string? GetClassId(this ClaimsPrincipal user)
+    {
+        var classIdClaim = user.FindFirst("classId");
+        return classIdClaim?.Value;
     }
 }

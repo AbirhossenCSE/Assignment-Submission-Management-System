@@ -1,3 +1,4 @@
+using AssignmentManagementSystem.API.Common.Enums;
 using AssignmentManagementSystem.API.Common.Exceptions;
 using AssignmentManagementSystem.API.DTOs.Auth;
 using AssignmentManagementSystem.API.Helpers.Interfaces;
@@ -10,17 +11,20 @@ namespace AssignmentManagementSystem.API.Services.Implementations;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IClassRepository _classRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUserRepository userRepository,
+        IClassRepository classRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
         ILogger<AuthService> logger)
     {
         _userRepository = userRepository;
+        _classRepository = classRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
         _logger = logger;
@@ -35,6 +39,17 @@ public class AuthService : IAuthService
             throw new ConflictException($"Email '{request.Email}' is already registered.");
         }
 
+        string? validatedClassId = null;
+        if (request.Role == Role.Student && !string.IsNullOrWhiteSpace(request.ClassId))
+        {
+            var classEntity = await _classRepository.GetByIdAsync(request.ClassId, cancellationToken);
+            if (classEntity == null)
+            {
+                throw new NotFoundException($"Class with ID '{request.ClassId}' was not found.");
+            }
+            validatedClassId = request.ClassId;
+        }
+
         var passwordHash = _passwordHasher.HashPassword(request.Password);
 
         var newUser = new User
@@ -43,6 +58,7 @@ public class AuthService : IAuthService
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHash,
             Role = request.Role,
+            ClassId = validatedClassId,
             IsActive = true
         };
 
@@ -58,6 +74,7 @@ public class AuthService : IAuthService
             FullName = newUser.FullName,
             Email = newUser.Email,
             Role = newUser.Role,
+            ClassId = newUser.ClassId,
             ExpiresAt = expiresAt
         };
     }
@@ -95,6 +112,7 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             Email = user.Email,
             Role = user.Role,
+            ClassId = user.ClassId,
             ExpiresAt = expiresAt
         };
     }
