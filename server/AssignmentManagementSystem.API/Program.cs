@@ -1,4 +1,5 @@
 using System.Text;
+using AssignmentManagementSystem.API.Common;
 using AssignmentManagementSystem.API.Configurations;
 using AssignmentManagementSystem.API.Helpers.Implementations;
 using AssignmentManagementSystem.API.Helpers.Interfaces;
@@ -8,6 +9,7 @@ using AssignmentManagementSystem.API.Repositories.Interfaces;
 using AssignmentManagementSystem.API.Services.Implementations;
 using AssignmentManagementSystem.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
@@ -117,8 +119,26 @@ builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IHealthService, HealthService>();
 
-// 7. Add Controllers
+// 7. Add Controllers & Custom ApiBehaviorOptions for Standardized Validation Errors
 builder.Services.AddControllers();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = actionContext =>
+    {
+        var errors = actionContext.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .SelectMany(e => e.Value!.Errors.Select(err => string.IsNullOrWhiteSpace(err.ErrorMessage) ? err.Exception?.Message ?? "Validation error" : err.ErrorMessage))
+            .ToList();
+
+        var response = ApiResponse<object>.FailureResponse(
+            message: "One or more validation errors occurred.",
+            errors: errors,
+            statusCode: StatusCodes.Status400BadRequest
+        );
+
+        return new BadRequestObjectResult(response);
+    };
+});
 
 // 8. CORS Configuration for Next.js Client
 const string corsPolicyName = "AllowNextJsClient";
@@ -171,7 +191,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 10. Middleware Pipeline
+// 10. Middleware Pipeline Order: Global Exception Handling -> Serilog -> Swagger -> CORS -> Auth -> Controllers
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseSerilogRequestLogging();

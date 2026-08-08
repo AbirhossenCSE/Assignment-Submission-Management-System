@@ -1,3 +1,4 @@
+using AssignmentManagementSystem.API.Common.Exceptions;
 using AssignmentManagementSystem.API.DTOs.Class;
 using AssignmentManagementSystem.API.Models;
 using AssignmentManagementSystem.API.Repositories.Interfaces;
@@ -42,7 +43,7 @@ public class ClassService : IClassService
         var classEntity = await _classRepository.GetByIdAsync(id, cancellationToken);
         if (classEntity == null)
         {
-            throw new KeyNotFoundException($"Class with ID '{id}' was not found.");
+            throw new NotFoundException($"Class with ID '{id}' was not found.");
         }
 
         return MapToDto(classEntity);
@@ -53,7 +54,7 @@ public class ClassService : IClassService
         var classEntity = await _classRepository.GetByIdAsync(id, cancellationToken);
         if (classEntity == null)
         {
-            throw new KeyNotFoundException($"Class with ID '{id}' was not found.");
+            throw new NotFoundException($"Class with ID '{id}' was not found.");
         }
 
         classEntity.Name = dto.Name.Trim();
@@ -71,7 +72,7 @@ public class ClassService : IClassService
         var classEntity = await _classRepository.GetByIdAsync(id, cancellationToken);
         if (classEntity == null)
         {
-            throw new KeyNotFoundException($"Class with ID '{id}' was not found.");
+            throw new NotFoundException($"Class with ID '{id}' was not found.");
         }
 
         classEntity.IsActive = false;

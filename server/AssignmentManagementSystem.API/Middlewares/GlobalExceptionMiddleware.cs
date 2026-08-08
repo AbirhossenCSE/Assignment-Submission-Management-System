@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using AssignmentManagementSystem.API.Common;
+using AssignmentManagementSystem.API.Common.Exceptions;
 
 namespace AssignmentManagementSystem.API.Middlewares;
 
@@ -23,7 +24,7 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
+            _logger.LogError(ex, "Unhandled exception intercepted by GlobalExceptionMiddleware: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
@@ -34,22 +35,27 @@ public class GlobalExceptionMiddleware
 
         var statusCode = exception switch
         {
-            UnauthorizedAccessException => HttpStatusCode.Forbidden,
-            InvalidOperationException => HttpStatusCode.BadRequest,
-            ArgumentException => HttpStatusCode.BadRequest,
-            KeyNotFoundException => HttpStatusCode.NotFound,
+            NotFoundException => HttpStatusCode.NotFound,
+            BadRequestException => HttpStatusCode.BadRequest,
+            ForbiddenException => HttpStatusCode.Forbidden,
+            ConflictException => HttpStatusCode.Conflict,
             _ => HttpStatusCode.InternalServerError
         };
 
         context.Response.StatusCode = (int)statusCode;
 
-        var errors = new List<string> { exception.Message };
+        var message = statusCode == HttpStatusCode.InternalServerError
+            ? "An unexpected error occurred. Please try again later or contact support."
+            : exception.Message;
+
+        var errors = statusCode == HttpStatusCode.InternalServerError
+            ? new List<string> { "An unexpected internal server error occurred." }
+            : new List<string> { exception.Message };
 
         var response = ApiResponse<object>.FailureResponse(
-            statusCode == HttpStatusCode.InternalServerError
-                ? "An internal server error occurred."
-                : exception.Message,
-            errors
+            message: message,
+            errors: errors,
+            statusCode: (int)statusCode
         );
 
         var jsonOptions = new JsonSerializerOptions

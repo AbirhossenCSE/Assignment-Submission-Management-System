@@ -4,6 +4,6 @@ namespace AssignmentManagementSystem.API.DTOs.Subject;
 
 public class AssignTeacherDto
 {
-    [Required(ErrorMessage = "TeacherId is required.")]
+    [Required(ErrorMessage = "Teacher ID is required.")]
     public string TeacherId { get; set; } = string.Empty;
 }

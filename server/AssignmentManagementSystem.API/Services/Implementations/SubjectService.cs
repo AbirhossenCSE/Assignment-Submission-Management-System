@@ -1,4 +1,5 @@
 using AssignmentManagementSystem.API.Common.Enums;
+using AssignmentManagementSystem.API.Common.Exceptions;
 using AssignmentManagementSystem.API.DTOs.Subject;
 using AssignmentManagementSystem.API.Models;
 using AssignmentManagementSystem.API.Repositories.Interfaces;
@@ -30,7 +31,7 @@ public class SubjectService : ISubjectService
         var classEntity = await _classRepository.GetByIdAsync(dto.ClassId, cancellationToken);
         if (classEntity == null)
         {
-            throw new KeyNotFoundException($"Class with ID '{dto.ClassId}' was not found.");
+            throw new NotFoundException($"Class with ID '{dto.ClassId}' was not found.");
         }
 
         string? teacherName = null;
@@ -39,11 +40,11 @@ public class SubjectService : ISubjectService
             var teacher = await _userRepository.GetByIdAsync(dto.TeacherId, cancellationToken);
             if (teacher == null)
             {
-                throw new KeyNotFoundException($"Teacher with ID '{dto.TeacherId}' was not found.");
+                throw new NotFoundException($"Teacher with ID '{dto.TeacherId}' was not found.");
             }
             if (teacher.Role != Role.Teacher)
             {
-                throw new InvalidOperationException($"User '{teacher.FullName}' does not have the Teacher role.");
+                throw new BadRequestException($"User '{teacher.FullName}' does not have the Teacher role.");
             }
             teacherName = teacher.FullName;
         }
@@ -74,7 +75,7 @@ public class SubjectService : ISubjectService
         var subject = await _subjectRepository.GetByIdAsync(id, cancellationToken);
         if (subject == null)
         {
-            throw new KeyNotFoundException($"Subject with ID '{id}' was not found.");
+            throw new NotFoundException($"Subject with ID '{id}' was not found.");
         }
 
         var classEntity = await _classRepository.GetByIdAsync(subject.ClassId, cancellationToken);
@@ -95,7 +96,7 @@ public class SubjectService : ISubjectService
         var classEntity = await _classRepository.GetByIdAsync(classId, cancellationToken);
         if (classEntity == null)
         {
-            throw new KeyNotFoundException($"Class with ID '{classId}' was not found.");
+            throw new NotFoundException($"Class with ID '{classId}' was not found.");
         }
 
         var subjects = await _subjectRepository.GetByClassIdAsync(classId, cancellationToken);
@@ -107,13 +108,13 @@ public class SubjectService : ISubjectService
         var subject = await _subjectRepository.GetByIdAsync(id, cancellationToken);
         if (subject == null)
         {
-            throw new KeyNotFoundException($"Subject with ID '{id}' was not found.");
+            throw new NotFoundException($"Subject with ID '{id}' was not found.");
         }
 
         var classEntity = await _classRepository.GetByIdAsync(dto.ClassId, cancellationToken);
         if (classEntity == null)
         {
-            throw new KeyNotFoundException($"Class with ID '{dto.ClassId}' was not found.");
+            throw new NotFoundException($"Class with ID '{dto.ClassId}' was not found.");
         }
 
         string? teacherName = null;
@@ -122,11 +123,11 @@ public class SubjectService : ISubjectService
             var teacher = await _userRepository.GetByIdAsync(dto.TeacherId, cancellationToken);
             if (teacher == null)
             {
-                throw new KeyNotFoundException($"Teacher with ID '{dto.TeacherId}' was not found.");
+                throw new NotFoundException($"Teacher with ID '{dto.TeacherId}' was not found.");
             }
             if (teacher.Role != Role.Teacher)
             {
-                throw new InvalidOperationException($"User '{teacher.FullName}' does not have the Teacher role.");
+                throw new BadRequestException($"User '{teacher.FullName}' does not have the Teacher role.");
             }
             teacherName = teacher.FullName;
         }
@@ -148,18 +149,18 @@ public class SubjectService : ISubjectService
         var subject = await _subjectRepository.GetByIdAsync(subjectId, cancellationToken);
         if (subject == null)
         {
-            throw new KeyNotFoundException($"Subject with ID '{subjectId}' was not found.");
+            throw new NotFoundException($"Subject with ID '{subjectId}' was not found.");
         }
 
         var teacher = await _userRepository.GetByIdAsync(teacherId, cancellationToken);
         if (teacher == null)
         {
-            throw new KeyNotFoundException($"Teacher with ID '{teacherId}' was not found.");
+            throw new NotFoundException($"Teacher with ID '{teacherId}' was not found.");
         }
 
         if (teacher.Role != Role.Teacher)
         {
-            throw new InvalidOperationException($"User '{teacher.FullName}' does not have the Teacher role.");
+            throw new BadRequestException($"User '{teacher.FullName}' does not have the Teacher role.");
         }
 
         subject.TeacherId = teacherId;
@@ -177,7 +178,7 @@ public class SubjectService : ISubjectService
         var subject = await _subjectRepository.GetByIdAsync(id, cancellationToken);
         if (subject == null)
         {
-            throw new KeyNotFoundException($"Subject with ID '{id}' was not found.");
+            throw new NotFoundException($"Subject with ID '{id}' was not found.");
         }
 
         subject.IsActive = false;

@@ -1,4 +1,5 @@
 using AssignmentManagementSystem.API.Common.Enums;
+using AssignmentManagementSystem.API.Common.Exceptions;
 using AssignmentManagementSystem.API.DTOs.Submission;
 using AssignmentManagementSystem.API.Models;
 using AssignmentManagementSystem.API.Repositories.Interfaces;
@@ -30,18 +31,18 @@ public class SubmissionService : ISubmissionService
         var assignment = await _assignmentRepository.GetByIdAsync(assignmentId, cancellationToken);
         if (assignment == null)
         {
-            throw new KeyNotFoundException($"Assignment with ID '{assignmentId}' was not found.");
+            throw new NotFoundException($"Assignment with ID '{assignmentId}' was not found.");
         }
 
         if (assignment.Status != AssignmentStatus.Published)
         {
-            throw new InvalidOperationException("Submissions are not accepted for draft assignments.");
+            throw new BadRequestException("Submissions are not accepted for draft assignments.");
         }
 
         var existingSubmission = await _submissionRepository.GetByAssignmentAndStudentAsync(assignmentId, studentId, cancellationToken);
         if (existingSubmission != null)
         {
-            throw new InvalidOperationException("A submission already exists for this assignment. Please use the resubmission endpoint to update your answer.");
+            throw new ConflictException("A submission already exists for this assignment. Please use the resubmission endpoint to update your answer.");
         }
 
         var now = DateTime.UtcNow;
@@ -71,13 +72,13 @@ public class SubmissionService : ISubmissionService
         var submission = await _submissionRepository.GetByIdAsync(submissionId, cancellationToken);
         if (submission == null)
         {
-            throw new KeyNotFoundException($"Submission with ID '{submissionId}' was not found.");
+            throw new NotFoundException($"Submission with ID '{submissionId}' was not found.");
         }
 
         if (submission.StudentId != studentId)
         {
             _logger.LogWarning("Student '{StudentId}' attempted unauthorized update on Submission '{SubmissionId}'.", studentId, submissionId);
-            throw new UnauthorizedAccessException("You are not authorized to update this submission.");
+            throw new ForbiddenException("You are not authorized to update this submission.");
         }
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken);
@@ -85,18 +86,18 @@ public class SubmissionService : ISubmissionService
         {
             if (!assignment.AllowResubmission)
             {
-                throw new InvalidOperationException("Resubmission not allowed for this assignment.");
+                throw new BadRequestException("Resubmission not allowed for this assignment.");
             }
 
             if (DateTime.UtcNow > assignment.Deadline)
             {
-                throw new InvalidOperationException("Cannot update submission after deadline.");
+                throw new BadRequestException("Cannot update submission after deadline.");
             }
         }
 
         if (submission.Status == SubmissionStatus.Graded)
         {
-            throw new InvalidOperationException("Cannot update a graded submission.");
+            throw new BadRequestException("Cannot update a graded submission.");
         }
 
         submission.AnswerText = dto.AnswerText.Trim();
@@ -114,24 +115,24 @@ public class SubmissionService : ISubmissionService
         var submission = await _submissionRepository.GetByIdAsync(submissionId, cancellationToken);
         if (submission == null)
         {
-            throw new KeyNotFoundException($"Submission with ID '{submissionId}' was not found.");
+            throw new NotFoundException($"Submission with ID '{submissionId}' was not found.");
         }
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken);
         if (assignment == null)
         {
-            throw new KeyNotFoundException($"Associated Assignment with ID '{submission.AssignmentId}' was not found.");
+            throw new NotFoundException($"Associated Assignment with ID '{submission.AssignmentId}' was not found.");
         }
 
         if (assignment.TeacherId != teacherId)
         {
             _logger.LogWarning("Teacher '{TeacherId}' attempted unauthorized grading on Submission '{SubmissionId}'.", teacherId, submissionId);
-            throw new UnauthorizedAccessException("You are not authorized to grade submissions for this assignment.");
+            throw new ForbiddenException("You are not authorized to grade submissions for this assignment.");
         }
 
         if (dto.Marks > assignment.MaxMarks)
         {
-            throw new ArgumentException($"Marks ({dto.Marks}) cannot exceed the maximum allowed marks ({assignment.MaxMarks}).");
+            throw new BadRequestException($"Marks ({dto.Marks}) cannot exceed the maximum allowed marks ({assignment.MaxMarks}).");
         }
 
         submission.Marks = dto.Marks;
@@ -151,19 +152,19 @@ public class SubmissionService : ISubmissionService
         var submission = await _submissionRepository.GetByIdAsync(submissionId, cancellationToken);
         if (submission == null)
         {
-            throw new KeyNotFoundException($"Submission with ID '{submissionId}' was not found.");
+            throw new NotFoundException($"Submission with ID '{submissionId}' was not found.");
         }
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken);
         if (assignment == null)
         {
-            throw new KeyNotFoundException($"Associated Assignment with ID '{submission.AssignmentId}' was not found.");
+            throw new NotFoundException($"Associated Assignment with ID '{submission.AssignmentId}' was not found.");
         }
 
         if (assignment.TeacherId != teacherId)
         {
             _logger.LogWarning("Teacher '{TeacherId}' attempted unauthorized status update on Submission '{SubmissionId}'.", teacherId, submissionId);
-            throw new UnauthorizedAccessException("You are not authorized to modify status for this assignment's submissions.");
+            throw new ForbiddenException("You are not authorized to modify status for this assignment's submissions.");
         }
 
         submission.Status = newStatus;
@@ -178,18 +179,18 @@ public class SubmissionService : ISubmissionService
         var assignment = await _assignmentRepository.GetByIdAsync(assignmentId, cancellationToken);
         if (assignment == null)
         {
-            throw new KeyNotFoundException($"Assignment with ID '{assignmentId}' was not found.");
+            throw new NotFoundException($"Assignment with ID '{assignmentId}' was not found.");
         }
 
         if (requestingUserRole == Role.Teacher && assignment.TeacherId != requestingUserId)
         {
             _logger.LogWarning("Teacher '{TeacherId}' attempted to view submissions for unassigned Assignment '{AssignmentId}'.", requestingUserId, assignmentId);
-            throw new UnauthorizedAccessException("You are not authorized to view submissions for this assignment.");
+            throw new ForbiddenException("You are not authorized to view submissions for this assignment.");
         }
 
         if (requestingUserRole == Role.Student)
         {
-            throw new UnauthorizedAccessException("Students are not authorized to view all class submissions.");
+            throw new ForbiddenException("Students are not authorized to view all class submissions.");
         }
 
         var submissions = await _submissionRepository.GetByAssignmentIdAsync(assignmentId, cancellationToken);
@@ -207,7 +208,7 @@ public class SubmissionService : ISubmissionService
         var submission = await _submissionRepository.GetByIdAsync(submissionId, cancellationToken);
         if (submission == null)
         {
-            throw new KeyNotFoundException($"Submission with ID '{submissionId}' was not found.");
+            throw new NotFoundException($"Submission with ID '{submissionId}' was not found.");
         }
 
         var assignment = await _assignmentRepository.GetByIdAsync(submission.AssignmentId, cancellationToken);
@@ -215,13 +216,13 @@ public class SubmissionService : ISubmissionService
         if (requestingUserRole == Role.Student && submission.StudentId != requestingUserId)
         {
             _logger.LogWarning("Student '{StudentId}' attempted unauthorized view of Submission '{SubmissionId}'.", requestingUserId, submissionId);
-            throw new UnauthorizedAccessException("You are not authorized to view this submission.");
+            throw new ForbiddenException("You are not authorized to view this submission.");
         }
 
         if (requestingUserRole == Role.Teacher && assignment != null && assignment.TeacherId != requestingUserId)
         {
             _logger.LogWarning("Teacher '{TeacherId}' attempted unauthorized view of Submission '{SubmissionId}'.", requestingUserId, submissionId);
-            throw new UnauthorizedAccessException("You are not authorized to view this submission.");
+            throw new ForbiddenException("You are not authorized to view this submission.");
         }
 
         return await GetResponseDtoForSubmissionAsync(submission, cancellationToken);

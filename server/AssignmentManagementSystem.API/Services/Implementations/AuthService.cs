@@ -1,3 +1,4 @@
+using AssignmentManagementSystem.API.Common.Exceptions;
 using AssignmentManagementSystem.API.DTOs.Auth;
 using AssignmentManagementSystem.API.Helpers.Interfaces;
 using AssignmentManagementSystem.API.Models;
@@ -31,7 +32,7 @@ public class AuthService : IAuthService
         if (existingUser != null)
         {
             _logger.LogWarning("Registration failed: Email '{Email}' is already registered.", request.Email);
-            throw new InvalidOperationException($"Email '{request.Email}' is already registered.");
+            throw new ConflictException($"Email '{request.Email}' is already registered.");
         }
 
         var passwordHash = _passwordHasher.HashPassword(request.Password);
@@ -67,20 +68,20 @@ public class AuthService : IAuthService
         if (user == null)
         {
             _logger.LogWarning("Login failed: User with email '{Email}' not found.", request.Email);
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            throw new BadRequestException("Invalid email or password.");
         }
 
         var isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
         if (!isPasswordValid)
         {
             _logger.LogWarning("Login failed: Password verification failed for user '{Email}'.", request.Email);
-            throw new UnauthorizedAccessException("Invalid email or password.");
+            throw new BadRequestException("Invalid email or password.");
         }
 
         if (!user.IsActive)
         {
             _logger.LogWarning("Login failed: User account '{Email}' is inactive.", request.Email);
-            throw new UnauthorizedAccessException("Account is inactive. Please contact system administrator.");
+            throw new ForbiddenException("Account is inactive. Please contact system administrator.");
         }
 
         _logger.LogInformation("User '{Email}' logged in successfully.", user.Email);
