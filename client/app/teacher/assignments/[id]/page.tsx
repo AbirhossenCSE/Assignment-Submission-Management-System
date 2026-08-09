@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import { ApiResponse, Assignment, AssignmentStatus } from '@/types';
+import { ApiResponse, Assignment, AssignmentStatus, Submission, SubmissionStatus } from '@/types';
 import Button from '@/components/Button';
 import { useToast } from '@/components/Toast';
 import {
@@ -13,9 +13,9 @@ import {
   Award,
   School,
   BookOpen,
-  CheckCircle2,
-  FileEdit,
   FileCheck,
+  UserCheck,
+  CheckCircle2,
   Loader2,
 } from 'lucide-react';
 
@@ -25,6 +25,7 @@ export default function AssignmentDetailPage() {
   const { showToast } = useToast();
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -32,9 +33,17 @@ export default function AssignmentDetailPage() {
       if (!id) return;
       try {
         setIsLoading(true);
-        const res = await api.get<ApiResponse<Assignment>>(`/assignments/${id}`);
-        if (res.data && res.data.data) {
-          setAssignment(res.data.data);
+        const [assignRes, subRes] = await Promise.allSettled([
+          api.get<ApiResponse<Assignment>>(`/assignments/${id}`),
+          api.get<ApiResponse<Submission[]>>(`/assignments/${id}/submissions`),
+        ]);
+
+        if (assignRes.status === 'fulfilled' && assignRes.value.data.data) {
+          setAssignment(assignRes.value.data.data);
+        }
+
+        if (subRes.status === 'fulfilled' && subRes.value.data.data) {
+          setSubmissions(subRes.value.data.data);
         }
       } catch (err: any) {
         const msg = err.response?.data?.message || 'Failed to fetch assignment details.';
@@ -73,6 +82,11 @@ export default function AssignmentDetailPage() {
   const isDraft = assignment.status === AssignmentStatus.Draft || (assignment.status as any) === 1;
   const isPast = new Date(assignment.deadline) < new Date();
 
+  const totalSubmissions = submissions.length;
+  const gradedCount = submissions.filter(
+    (s) => s.status === SubmissionStatus.Graded || (s.status as any) === 4 || s.marks !== null
+  ).length;
+
   const formattedDeadline = new Date(assignment.deadline).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -96,7 +110,7 @@ export default function AssignmentDetailPage() {
 
         <Link href={`/teacher/assignments/${id}/submissions`}>
           <Button icon={<FileCheck className="h-4 w-4" />}>
-            View Submissions & Grading
+            View Submissions ({totalSubmissions})
           </Button>
         </Link>
       </div>
@@ -161,6 +175,28 @@ export default function AssignmentDetailPage() {
             </span>
             <p className="text-sm font-bold text-emerald-400">{assignment.maxMarks} Points</p>
           </div>
+        </div>
+
+        {/* Submission Summary Banner */}
+        <div className="p-4 rounded-xl border border-purple-500/20 bg-purple-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-white text-sm">Submission Status Summary</p>
+              <p className="text-purple-200">
+                {totalSubmissions === 0
+                  ? 'No submissions received yet.'
+                  : `${totalSubmissions} total submission${totalSubmissions === 1 ? '' : 's'} received (${gradedCount} graded).`}
+              </p>
+            </div>
+          </div>
+          <Link href={`/teacher/assignments/${id}/submissions`}>
+            <Button size="sm" variant="secondary" icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}>
+              Review All Submissions
+            </Button>
+          </Link>
         </div>
 
         {/* Instructions & Description */}
