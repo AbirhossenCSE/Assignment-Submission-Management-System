@@ -1,4 +1,4 @@
-import { User } from '@/types';
+import { User, getRoleName } from '@/types';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
@@ -6,12 +6,18 @@ const USER_KEY = 'auth_user';
 export function saveToken(token: string): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(TOKEN_KEY, token);
+    document.cookie = `token=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
   }
 }
 
 export function getToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) return token;
+    
+    // Fallback to cookie if localStorage is empty
+    const match = document.cookie.match(new RegExp('(^| )token=([^;]+)'));
+    if (match) return decodeURIComponent(match[2]);
   }
   return null;
 }
@@ -19,12 +25,15 @@ export function getToken(): string | null {
 export function removeToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 }
 
 export function saveUser(user: User): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
+    const roleName = getRoleName(user.role);
+    document.cookie = `role=${encodeURIComponent(roleName)}; path=/; max-age=86400; SameSite=Lax`;
   }
 }
 
@@ -44,6 +53,7 @@ export function getUser(): User | null {
 export function removeUser(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(USER_KEY);
+    document.cookie = 'role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 }
 
