@@ -13,8 +13,8 @@ public static class DataSeeder
     {
         try
         {
-            // Ping check with 1-second timeout to avoid delaying startup when local MongoDB is offline
-            using (var pingCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(1000)))
+            // Ping check with 3-second timeout to verify connection before querying
+            using (var pingCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(3000)))
             {
                 await database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: pingCts.Token);
             }
@@ -25,11 +25,11 @@ public static class DataSeeder
             var existingUserCount = await usersCollection.CountDocumentsAsync(FilterDefinition<User>.Empty);
             if (existingUserCount > 0)
             {
-                Log.Information("Database already contains user records ({Count}). Skipping seeding.", existingUserCount);
+                Log.Information("Database '{DatabaseName}' already contains user records ({Count}). Skipping seeding.", database.DatabaseNamespace.DatabaseName, existingUserCount);
                 return;
             }
 
-            Log.Information("Seeding demo data into MongoDB database '{DatabaseName}'...", database.DatabaseNamespace.DatabaseName);
+            Log.Information("Starting database seeding into MongoDB database '{DatabaseName}'...", database.DatabaseNamespace.DatabaseName);
 
             var classesCollection = database.GetCollection<ClassEntity>("Classes");
             var subjectsCollection = database.GetCollection<Subject>("Subjects");
@@ -59,7 +59,8 @@ public static class DataSeeder
                 UpdatedAt = now
             };
 
-            await classesCollection.InsertManyAsync(new[] { classA, classB });
+            var classesList = new[] { classA, classB };
+            await classesCollection.InsertManyAsync(classesList);
 
             // 2. Create Demo Users
             var adminUser = new User
@@ -137,8 +138,8 @@ public static class DataSeeder
                 UpdatedAt = now
             };
 
-            var users = new[] { adminUser, teacher1, teacher2, student1, student2, student3 };
-            await usersCollection.InsertManyAsync(users);
+            var usersList = new[] { adminUser, teacher1, teacher2, student1, student2, student3 };
+            await usersCollection.InsertManyAsync(usersList);
 
             // 3. Create Demo Subjects
             var mathSubject = new Subject
@@ -189,7 +190,8 @@ public static class DataSeeder
                 UpdatedAt = now
             };
 
-            await subjectsCollection.InsertManyAsync(new[] { mathSubject, scienceSubject, englishSubject, historySubject });
+            var subjectsList = new[] { mathSubject, scienceSubject, englishSubject, historySubject };
+            await subjectsCollection.InsertManyAsync(subjectsList);
 
             // 4. Create Demo Assignments
             var algebraQuiz = new Assignment
@@ -260,7 +262,8 @@ public static class DataSeeder
                 UpdatedAt = now
             };
 
-            await assignmentsCollection.InsertManyAsync(new[] { algebraQuiz, opticsLab, calculusDraft, essayAssignment });
+            var assignmentsList = new[] { algebraQuiz, opticsLab, calculusDraft, essayAssignment };
+            await assignmentsCollection.InsertManyAsync(assignmentsList);
 
             // 5. Create Demo Submissions
             var alexSubmission = new Submission
@@ -320,7 +323,11 @@ public static class DataSeeder
                 UpdatedAt = now.AddHours(-3)
             };
 
-            await submissionsCollection.InsertManyAsync(new[] { alexSubmission, emmaSubmission, peterSubmission });
+            var submissionsList = new[] { alexSubmission, emmaSubmission, peterSubmission };
+            await submissionsCollection.InsertManyAsync(submissionsList);
+
+            Log.Information("Database seeding completed. {UserCount} users, {ClassCount} classes, {SubjectCount} subjects, {AssignmentCount} assignments, {SubmissionCount} submissions created.",
+                usersList.Length, classesList.Length, subjectsList.Length, assignmentsList.Length, submissionsList.Length);
 
             Log.Information("==========================================================");
             Log.Information("   DEMO DATASEEDER SUCCESSFULLY EXECUTED   ");
@@ -336,11 +343,11 @@ public static class DataSeeder
         }
         catch (OperationCanceledException)
         {
-            Log.Warning("MongoDB connection unavailable on port 27017. Database seeding bypassed for resilient dev mode.");
+            Log.Warning("MongoDB connection timed out. Seeding bypassed for offline dev mode.");
         }
         catch (TimeoutException)
         {
-            Log.Warning("MongoDB connection timed out on port 27017. Database seeding bypassed for resilient dev mode.");
+            Log.Warning("MongoDB connection timed out. Seeding bypassed for offline dev mode.");
         }
         catch (Exception ex)
         {

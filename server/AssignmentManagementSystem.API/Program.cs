@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Serilog;
 
@@ -192,12 +193,26 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 10. Database Seeding Execution
+// 10. Database Connection Diagnostic & Seeding Execution
 using (var scope = app.Services.CreateScope())
 {
+    var database = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
+    var dbName = database.DatabaseNamespace.DatabaseName;
+
     try
     {
-        var database = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
+        Log.Information("Testing MongoDB connection to database '{DatabaseName}'...", dbName);
+        using var pingCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var pingResult = await database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: pingCts.Token);
+        Log.Information("Successfully connected to MongoDB database '{DatabaseName}'. Ping response: {Ping}", dbName, pingResult.ToJson());
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Failed to connect to MongoDB database '{DatabaseName}'. Error message: {Message}", dbName, ex.Message);
+    }
+
+    try
+    {
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         await DataSeeder.SeedAsync(database, passwordHasher);
     }
