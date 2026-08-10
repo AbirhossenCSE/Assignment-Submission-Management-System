@@ -53,7 +53,12 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
     {
         throw new InvalidOperationException("MongoDB ConnectionString is not configured.");
     }
-    return new MongoClient(mongoSettings.ConnectionString);
+
+    var clientSettings = MongoClientSettings.FromConnectionString(mongoSettings.ConnectionString);
+    clientSettings.ConnectTimeout = TimeSpan.FromSeconds(30);
+    clientSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(30);
+
+    return new MongoClient(clientSettings);
 });
 
 builder.Services.AddSingleton<IMongoDatabase>(sp =>
@@ -193,32 +198,46 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 10. Database Connection Diagnostic & Seeding Execution
+// 10. Database Connection Diagnostic & Seeding Execution with Cold-Start Retry Loop
 using (var scope = app.Services.CreateScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<IMongoDatabase>();
     var dbName = database.DatabaseNamespace.DatabaseName;
 
-    try
+    const int maxRetries = 3;
+    bool isConnected = false;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
     {
-        Log.Information("Testing MongoDB connection to database '{DatabaseName}'...", dbName);
-        using var pingCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var pingResult = await database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: pingCts.Token);
-        Log.Information("Successfully connected to MongoDB database '{DatabaseName}'. Ping response: {Ping}", dbName, pingResult.ToJson());
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Failed to connect to MongoDB database '{DatabaseName}'. Error message: {Message}", dbName, ex.Message);
+        try
+        {
+            Log.Information("Testing MongoDB connection to database '{DatabaseName}' (Attempt {Attempt}/{MaxRetries})...", dbName, attempt, maxRetries);
+            using var pingCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var pingResult = await database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: pingCts.Token);
+            Log.Information("Successfully connected to MongoDB database '{DatabaseName}'. Ping response: {Ping}", dbName, pingResult.ToJson());
+            isConnected = true;
+            break;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "MongoDB connection attempt {Attempt}/{MaxRetries} failed for database '{DatabaseName}': {Message}", attempt, maxRetries, dbName, ex.Message);
+            if (attempt < maxRetries)
+            {
+                Log.Information("Retrying MongoDB connection check in 2 seconds...");
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+            else
+            {
+                Log.Error(ex, "All {MaxRetries} MongoDB connection attempts failed for database '{DatabaseName}'.", maxRetries, dbName);
+                throw;
+            }
+        }
     }
 
-    try
+    if (isConnected)
     {
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         await DataSeeder.SeedAsync(database, passwordHasher);
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Failed to execute database seeding during startup.");
     }
 }
 
